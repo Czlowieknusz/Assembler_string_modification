@@ -1,0 +1,74 @@
+.data
+SYSCALL32 = 0x80
+SYSEXIT = 60
+STDOUT = 1
+WRITE = 1
+STDIN = 0
+READ = 0
+BUF_SIZE = 254
+MAXM = 'z'
+MINM = 'a'
+SPACE = ' '
+
+TEXT_SIZE: .long 0
+
+.bss
+	.comm BUFFOR, BUF_SIZE
+	.comm ZMIENIONY, BUF_SIZE
+
+.text
+	.globl _start
+_start:
+
+	#pobranie tekstu do dalszej obróbki
+movq $READ, %rax
+movq $STDIN, %rdi
+movq $BUFFOR, %rsi
+movq $BUF_SIZE, %rdx
+syscall
+
+sub $1, %rax
+
+movq %rax, TEXT_SIZE
+
+	#jeśli litera to zostawiamy. W przeciwnym razie zostawiamy spacje
+
+mov $0, %edi # ustalenie indeksu pierwszego znaku
+
+petla: # poczatek petli
+
+cmp $TEXT_SIZE, %edi # porownanie rozmiaru 
+je end
+
+movb BUFFOR(,%edi,1), %al # zapis znaku na pozycji wskazanej w rdi z BUFFOR do bh
+
+#orb $0x20, %al # zamienia znaki na male
+
+cmp $MINM, %al # sprawdz czy wartosc mniejsza od 'a'
+jb szyfruj # jesli tak to przeskocz do szyfrowania
+
+cmp $MAXM, %al # sprawdz czy wartosc wieksza od 'z'
+ja szyfruj # jesli tak przeskocz do szyfrowania
+
+movb %al, ZMIENIONY(,%edi,1) # wartosc miedzy 'A' i 'Z' lub 'a' i 'z', zatem dopisujemy do bufora
+inc %edi # inkrementacja wskaznika
+jmp petla
+
+szyfruj:
+movb $SPACE, ZMIENIONY(,%edi,1) # dopisanie spacji do bufora
+inc %edi # inkrementacja wskaznika
+jmp petla
+
+end: # końcówkaprogramu
+
+	# wypisanie zmienionego tekstu
+movq $WRITE, %rax
+movq $STDOUT, %rdi
+movq $ZMIENIONY, %rsi
+movq TEXT_SIZE, %rdx
+syscall
+
+	# zakonczenie programu
+movq $SYSEXIT, %rax
+syscall
+
